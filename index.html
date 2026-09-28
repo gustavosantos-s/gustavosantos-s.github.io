@@ -18,7 +18,7 @@
       <link rel="canonical" href="https://gustavosantos-s.github.io/"/>
       <meta content="summary_large_image" name="twitter:card"/>
       <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<link href="./assets/css/main.css?v=2" rel="stylesheet" type="text/css"/>
+<link href="./assets/css/main.css?v=4" rel="stylesheet" type="text/css"/>
       <link href="https://fonts.googleapis.com" rel="preconnect"/>
       <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous"/>
       <link href="https://fonts.googleapis.com/css2?family=Anton:wght@400&display=swap" rel="stylesheet"/>
@@ -68,6 +68,50 @@
             z-index: 2;
             background-color: transparent;
             overflow-x: hidden;
+            }
+            .ds-hero-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+            }
+            /* Saída do hero ao rolar: --p vai de 0 a 1 ao longo da altura do hero, --y é o deslocamento em px (main.js) */
+            .ds-hero { --p: 0; --y: 0px; overflow: hidden; overflow: clip; }
+            .ds-hero-video {
+            transform: translateY(calc(var(--y) * .6)) scale(calc(1 + var(--p) * .25));
+            filter: blur(calc(var(--p) * 8px));
+            opacity: calc(1 - var(--p) * .5);
+            will-change: transform, filter, opacity;
+            }
+            .ds-hero-content { transform: translateY(calc(var(--y) * .45)); will-change: transform; }
+            .ds-hero-title-wrapper { overflow: visible; }
+            .ds-hero-title {
+            transform: scale(calc(1 + var(--p) * .35));
+            transform-origin: 50% 60%;
+            opacity: calc(1 - var(--p) * 1.3);
+            }
+            .ds-hero-meta {
+            opacity: calc(1 - var(--p) * 2.2);
+            transform: translateY(calc(var(--p) * -40px));
+            }
+            .ds-hero-scroll { opacity: calc(1 - var(--p) * 5); }
+            .ds-hero-scroll { position: absolute; left: 0; right: 0; bottom: 0; height: 0; z-index: 3; }
+            /* O conteúdo sobe por cima do hero como uma folha */
+            .page-sheet {
+            position: relative;
+            z-index: 3;
+            background: #fff;
+            border-radius: 28px 28px 0 0;
+            box-shadow: 0 -24px 60px rgba(0, 0, 0, .06);
+            }
+            /* Quem pede menos movimento vê só o primeiro quadro */
+            @media (prefers-reduced-motion: reduce) {
+            .ds-hero-video { display: none; }
+            .ds-hero { background: url(./assets/video/hero-poster.webp) center / cover no-repeat; }
+            .ds-hero-video, .ds-hero-content, .ds-hero-title, .ds-hero-meta, .ds-hero-scroll { transform: none; filter: none; opacity: 1; }
             }
             .ds-hero-content {
             text-align: center;
@@ -139,6 +183,10 @@
             .page-layout { display: block !important; width: 100% !important; }
          </style>
          <section class="ds-hero section-hero">
+            <video class="ds-hero-video" autoplay muted loop playsinline preload="auto" poster="./assets/video/hero-poster.webp" aria-hidden="true">
+               <source src="./assets/video/hero.webm" type="video/webm"/>
+               <source src="./assets/video/hero.mp4" type="video/mp4"/>
+            </video>
             <div class="ds-ambient-bg">
                <div class="ds-ambient-blob blob-1"></div>
                <div class="ds-ambient-blob blob-2"></div>
@@ -147,6 +195,7 @@
                <div class="ds-hero-title-wrapper" data-anim-id="reveal-14" >
                   <h1 class="ds-hero-title">Gustavo<br/>Santos</h1>
                </div>
+               <div class="ds-hero-meta">
                <div class="ds-hero-subtitle">Engenheiro de Software · Sistemas, APIs &amp; IA Aplicada</div>
                <div class="ds-hero-nav">
                   <a href="#about">Sobre</a>
@@ -155,15 +204,17 @@
                   <a href="#expertise">Especialidades</a>
                   <a href="#contact">Contato</a>
                </div>
+               </div>
             </div>
+            <div class="ds-hero-scroll">
             <div style="position:absolute; bottom:2rem; width:100%; display:flex; justify-content:center; opacity:0; animation: fadeInUp 1.5s 1.2s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;">
                <a href="#about" class="scroll-down-link gs-inline-block">
                <img src="./assets/icons/scroll-down.svg" loading="eager" alt="Rolar para baixo" class="scroll-down-image" style="width:24px; opacity:0.8;"/>
                </a>
             </div>
+            </div>
          </section>
-         <!-- Parallax disabled for now -->
-         <div class="gs-layout-blockcontainer container-fluid gs-container">
+         <div class="gs-layout-blockcontainer container-fluid gs-container page-sheet">
             <div class="gs-layout-grid page-layout">
                <div id="gs-layout-node-21" class="page-sidebar">
                   <div data-animation="default" data-collapse="none" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" class="navigation gs-nav">
@@ -299,32 +350,32 @@
                         <h2 class="heading-medium">Como eu trabalho</h2>
                      </div>
                      <div class="metrics-grid">
-                        <div class="metric-card" style="opacity:0; animation: fadeInUp 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+                        <div class="metric-card">
                            <div class="metric-value shimmer-text-dark">Arquitetura</div>
                            <div class="metric-title">Decisões Documentadas</div>
                            <div class="metric-desc">Evolução planejada em fases, com testes automatizados e um ponto de retorno seguro a cada etapa.</div>
                         </div>
-                        <div class="metric-card" style="opacity:0; animation: fadeInUp 0.8s 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+                        <div class="metric-card">
                            <div class="metric-value shimmer-text-dark">Full-stack</div>
                            <div class="metric-title">Do Banco ao Deploy</div>
                            <div class="metric-desc">Modelagem de dados, APIs, interfaces e infraestrutura com Docker, de ponta a ponta.</div>
                         </div>
-                        <div class="metric-card" style="opacity:0; animation: fadeInUp 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+                        <div class="metric-card">
                            <div class="metric-value shimmer-text-dark">Segurança</div>
                            <div class="metric-title">Seguro por Padrão</div>
                            <div class="metric-desc">Controle de acesso por perfil, segredos fora do código e serviços sem exposição desnecessária à rede.</div>
                         </div>
-                        <div class="metric-card" style="opacity:0; animation: fadeInUp 0.8s 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+                        <div class="metric-card">
                            <div class="metric-value shimmer-text-dark">IA + LGPD</div>
                            <div class="metric-title">IA Aplicada com Responsabilidade</div>
                            <div class="metric-desc">Agentes integrados a processos reais, com a fonte de cada dado rastreável e privacidade desde o desenho.</div>
                         </div>
-                        <div class="metric-card" style="opacity:0; animation: fadeInUp 0.8s 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+                        <div class="metric-card">
                            <div class="metric-value shimmer-text-dark">Adoção</div>
                            <div class="metric-title">Software que a Equipe Usa</div>
                            <div class="metric-desc">Documentação, manuais e treinamento fazem parte da entrega, não de uma etapa posterior.</div>
                         </div>
-                        <div class="metric-card" style="opacity:0; animation: fadeInUp 0.8s 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+                        <div class="metric-card">
                            <div class="metric-value shimmer-text-dark">C# + Py</div>
                            <div class="metric-title">Stack Principal</div>
                            <div class="metric-desc">C#/.NET para APIs e sistemas web; Python para automação, dados e agentes de IA.</div>
@@ -1309,6 +1360,7 @@
             </div>
          </section>
       </div>
-         <script src="./assets/js/main.js?v=2" defer></script>
+         <script src="./assets/js/vendor/lenis.min.js?v=1.3.26" defer></script>
+         <script src="./assets/js/main.js?v=4" defer></script>
    </body>
 </html>
