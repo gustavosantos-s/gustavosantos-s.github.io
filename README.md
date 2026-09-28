@@ -1,20 +1,27 @@
-# Gustavo Santos - Portfólio
+# Gustavo Santos — Portfólio
 
-> Engenheiro de Software especializado em Inteligência Artificial e Sistemas de Alta Performance tanto no BackEnd para sistemas web ou para automações corporativas.
+> Engenheiro de Software: sistemas web em C#/.NET e React, agentes de IA e automações em Python.
 
-Bem-vindo ao repositório do meu portfólio pessoal. Este projeto é uma vitrine do meu trabalho profissional e da minha abordagem técnica para resolução de problemas no dia a dia.
+Repositório do meu portfólio pessoal, publicado em **https://gustavosantos-s.github.io/** via GitHub Pages.
 
 ## 📂 Estrutura de Arquivos
 
 ```text
-├── index.html          # Página Única com estrutura semântica
-├── vercel.json         # Configurações de Security Headers & Cache
+├── index.html          # Página única com estrutura semântica
 └── assets/
     ├── css/
-    │   └── main.css    # Ponto focal e único de estilização abstrata
+    │   └── main.css    # Estilos do site
     ├── js/
-    │   └── main.js     # Motor enxuto de Interseções (Observers) e interatividade DOM
-    ├── fonts/          # WOFF2 de alta compressão pré-cacheadas
-    ├── icons/          # Ícones autorais otimizados em SVG inline
-    └── images/         # Assets visuais processados
+    │   └── main.js     # Animações de entrada, lightbox dos projetos e rolagem suave
+    ├── fonts/          # Mona Sans em WOFF2
+    ├── icons/          # Ícones em SVG
+    └── images/         # Retrato, imagens dos projetos (WebP) e imagem de compartilhamento
+```
+
+## Rodando localmente
+
+Não há build: basta abrir o `index.html` no navegador ou servir a pasta:
+
+```bash
+python3 -m http.server 8000   # http://localhost:8000
 ```

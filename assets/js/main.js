@@ -114,15 +114,23 @@
       document.body.appendChild(wrapper);
     });
 
+    // Card que abriu o lightbox, para devolver o foco a ele ao fechar
+    let opener = null;
+
     projectLinks.forEach((link, index) => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         const wrapper = lightboxWrappers[index];
         if (wrapper) {
+          opener = link;
+          // O conteúdo do modal aparece inteiro de uma vez: não depende do observer de rolagem,
+          // que não dispara para elementos dentro do lightbox (título, imagem e botão ficavam invisíveis)
+          wrapper.querySelectorAll('[data-anim-id]').forEach((el) => el.classList.add('revealed'));
           wrapper.style.display = 'flex';
           document.body.style.overflow = 'hidden';
           requestAnimationFrame(() => {
             wrapper.style.opacity = '1';
+            wrapper.querySelector('.project-lightbox-close')?.focus();
           });
         }
       });
@@ -135,6 +143,8 @@
       setTimeout(() => {
         wrapper.style.display = 'none';
       }, 300);
+      opener?.focus();
+      opener = null;
     }
 
     closeBtns.forEach((btn) => {

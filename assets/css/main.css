@@ -182,7 +182,9 @@ figcaption{text-align:left;margin-top:.5rem;font-size:1.125rem}
 .project-link:hover{color:var(--color--primary)}
 .project-thumbnail-wrapper{overflow:hidden}
 .project-list{grid-row-gap:6.875rem;flex-direction:column;display:flex}
-.project-thumbnail{aspect-ratio:1918/982;object-fit:cover;width:100%;display:block}
+.project-thumbnail{aspect-ratio:1918/982;object-fit:cover;width:100%;height:auto;display:block}
+.project-image,.project-gallery-image,.about-image{height:auto}
+.page-heading{padding-top:.2em}
 .project-intro{grid-column-gap:1rem;grid-row-gap:1rem;color:var(--color--white);mix-blend-mode:difference;justify-content:space-between;display:flex}
 .project-title-wrapper{padding-left:4.25vw;padding-right:.75vw}
 .project-category{font-size:1.5rem;font-weight:700;display:flex}
