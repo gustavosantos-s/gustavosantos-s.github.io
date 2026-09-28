@@ -24,9 +24,12 @@
 
   // Chama cb uma única vez para cada elemento, quando ele entra na tela
   function onceVisible(elements, cb, options) {
+    // o mesmo elemento pode aparecer duas vezes num lote de entradas; roda só uma vez
+    const done = new WeakSet();
     const io = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && !done.has(entry.target)) {
+          done.add(entry.target);
           cb(entry.target);
           io.unobserve(entry.target);
         }
@@ -64,7 +67,8 @@
   // Títulos das seções: palavras sobem por uma máscara, em sequência
   function initHeadingReveal() {
     if (REDUCED) return;
-    const headings = document.querySelectorAll('.heading-medium');
+    // "Como eu trabalho" tem surgimento próprio (initTypeHeading)
+    const headings = [...document.querySelectorAll('.heading-medium')].filter((h) => !h.closest('#metrics'));
     headings.forEach((h) => {
       let i = 0;
       splitWords(h, (word) => {
@@ -150,18 +154,376 @@
     }
   }
 
-  // Cards de "Como eu trabalho": entram em cascata e têm um brilho que segue o mouse
+  // "Como eu trabalho": o título é digitado com um cursor piscando
+  function initTypeHeading() {
+    const h = document.querySelector('#metrics .heading-medium');
+    if (!h || REDUCED) return;
+    const text = h.textContent;
+    h.setAttribute('aria-label', text);
+    h.textContent = '';
+    // cada letra já ocupa o seu espaço (invisível), então o título não "pula" enquanto é digitado
+    const chars = [...text].map((ch) => {
+      const span = document.createElement('span');
+      span.className = 'type-char';
+      span.textContent = ch;
+      span.setAttribute('aria-hidden', 'true');
+      h.appendChild(span);
+      return span;
+    });
+    onceVisible([h], () => {
+      let k = 0;
+      const step = () => {
+        if (k > 0) chars[k - 1].classList.remove('is-caret');
+        chars[k].classList.add('is-typed', 'is-caret');
+        k++;
+        if (k < chars.length) setTimeout(step, 45 + Math.random() * 55);
+        else setTimeout(() => chars[k - 1].classList.remove('is-caret'), 2600);
+      };
+      step();
+    }, { threshold: 0.5 });
+  }
+
+  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#{}<>/+=*';
+
+  // Troca o texto por caracteres aleatórios que vão se fixando da esquerda para a direita
+  function decode(el, duration) {
+    // guarda o texto original: uma segunda chamada no meio da animação não pode ler o texto embaralhado
+    el.dataset.text ??= el.textContent;
+    const text = el.dataset.text;
+    const letters = [...text];
+    const size = document.createElement('span');
+    const live = document.createElement('span');
+    size.className = 'decode-size';
+    size.textContent = text;
+    live.className = 'decode-live';
+    live.setAttribute('aria-hidden', 'true');
+    el.textContent = '';
+    el.append(size, live);
+
+    const resolveAt = letters.map((_, i) => (i / letters.length) * duration * 0.65 + Math.random() * duration * 0.35);
+    const start = performance.now();
+    let lastSwap = 0;
+    const tick = (now) => {
+      const t = now - start;
+      if (t >= duration) {
+        el.textContent = text;
+        return;
+      }
+      if (now - lastSwap > 45) {
+        lastSwap = now;
+        live.textContent = letters
+          .map((ch, i) => (ch === ' ' || t >= resolveAt[i] ? ch : GLYPHS[Math.floor(Math.random() * GLYPHS.length)]))
+          .join('');
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // Cards de "Como eu trabalho": cada um é "compilado" — a borda é desenhada, o valor é decodificado
+  // e o texto entra por último. O brilho que segue o mouse vale sempre.
   function initCards() {
-    const cards = document.querySelectorAll('.metrics-grid .metric-card');
-    cards.forEach((card, i) => {
-      card.style.setProperty('--i', i % 3);
+    const cards = [...document.querySelectorAll('.metrics-grid .metric-card')];
+    cards.forEach((card) => {
       card.addEventListener('mousemove', (e) => {
         const r = card.getBoundingClientRect();
         card.style.setProperty('--mx', e.clientX - r.left + 'px');
         card.style.setProperty('--my', e.clientY - r.top + 'px');
       });
     });
-    onceVisible(cards, (c) => c.classList.add('is-revealed'), { threshold: 0.15 });
+    if (REDUCED || !cards.length) return;
+
+    const NS = 'http://www.w3.org/2000/svg';
+    cards.forEach((card) => {
+      const svg = document.createElementNS(NS, 'svg');
+      const rect = document.createElementNS(NS, 'rect');
+      svg.setAttribute('class', 'card-outline');
+      svg.setAttribute('aria-hidden', 'true');
+      rect.setAttribute('pathLength', '1');
+      svg.appendChild(rect);
+      card.appendChild(svg);
+      card.classList.add('is-pending');
+    });
+
+    // o contorno acompanha o tamanho real de cada card
+    const fitOutlines = () => cards.forEach((card) => {
+      const w = card.clientWidth;
+      const h = card.clientHeight;
+      const r = Math.max(0, (parseFloat(getComputedStyle(card).borderTopLeftRadius) || 0) - 1);
+      const svg = card.querySelector('.card-outline');
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      const attrs = { x: 0.5, y: 0.5, width: w - 1, height: h - 1, rx: r, ry: r };
+      Object.entries(attrs).forEach(([k, v]) => svg.firstChild.setAttribute(k, v));
+    });
+    fitOutlines();
+    window.addEventListener('resize', fitOutlines);
+
+    onceVisible(cards, (card) => {
+      const delay = (cards.indexOf(card) % 3) * 180;
+      setTimeout(() => {
+        card.classList.add('is-compiling');
+        setTimeout(() => {
+          card.classList.remove('is-pending');
+          decode(card.querySelector('.metric-value'), 900);
+        }, 550);
+      }, delay);
+    }, { threshold: 0.35 });
+  }
+
+  // Terminal: roda uma apresentação sozinho e depois aceita comandos do visitante
+  function initTerminal() {
+    const term = document.querySelector('.terminal');
+    if (!term) return;
+    const body = term.querySelector('.terminal-body');
+    const output = term.querySelector('.terminal-output');
+    const form = term.querySelector('.terminal-input-line');
+    const input = term.querySelector('.terminal-input');
+    const PROMPT = 'gustavo@portfolio:~$';
+
+    // mesma ordem dos cards em "Projetos Selecionados"
+    const PROJECTS = ['homecare', 'captacao-ia', 'central-whatsapp', 'designer-pedras', 'automacao-ia', 'dashboards'];
+    const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const k = (t) => `<span class="k">"${t}"</span>`;
+    const str = (t) => `<span class="s">"${t}"</span>`;
+    const arr = (items) => `[${items.map(str).join(', ')}]`;
+
+    const OUTPUTS = {
+      whoami: [
+        'Gustavo Santos',
+        '<span class="d">Engenheiro de Software · Sistemas, APIs &amp; IA Aplicada</span>',
+      ],
+      stack: [
+        '{',
+        `  ${k('backend')}: ${arr(['C#', '.NET 8', 'ASP.NET Core', 'EF Core', 'Python', 'FastAPI'])},`,
+        `  ${k('frontend')}: ${arr(['React', 'Vite', 'JavaScript'])},`,
+        `  ${k('dados')}: ${arr(['PostgreSQL', 'Redis', 'pgvector', 'Pandas'])},`,
+        `  ${k('ia')}: ${arr(['LLM tool calling', 'Agno', 'LangChain', 'N8N'])},`,
+        `  ${k('infra')}: ${arr(['Docker', 'Caddy', 'Linux'])}`,
+        '}',
+      ],
+      projetos: [PROJECTS.map((p) => p + '/').join('  '), '<span class="d">Use: open &lt;projeto&gt;  (ex.: open homecare)</span>'],
+      status: ['<span class="ok">●</span> Disponível para novos projetos'],
+      contato: [
+        'e-mail     <a href="mailto:gugmoises@gmail.com">gugmoises@gmail.com</a>',
+        'whatsapp   <a href="https://wa.me/5541995961197" target="_blank" rel="noopener">abrir conversa</a>',
+        'linkedin   <a href="https://www.linkedin.com/in/gustavosantos-s/" target="_blank" rel="noopener">/in/gustavosantos-s</a>',
+        'github     <a href="https://github.com/gustavosantos-s" target="_blank" rel="noopener">/gustavosantos-s</a>',
+      ],
+      help: [
+        'Comandos disponíveis:',
+        '  <span class="k">whoami</span>           quem sou eu',
+        '  <span class="k">stack</span>            tecnologias que eu uso',
+        '  <span class="k">projetos</span>         lista os projetos',
+        '  <span class="k">open</span> &lt;projeto&gt;   abre os detalhes de um projeto',
+        '  <span class="k">contato</span>          como falar comigo',
+        '  <span class="k">status</span>           disponibilidade',
+        '  <span class="k">clear</span>            limpa o terminal',
+        '<span class="d">Dica: ↑/↓ navegam no histórico e Tab completa.</span>',
+      ],
+    };
+    const ALIASES = { 'cat stack.json': 'stack', 'ls projetos': 'projetos', 'ls projetos/': 'projetos', 'cat contato.txt': 'contato' };
+    const COMMANDS = ['help', 'whoami', 'stack', 'projetos', 'open', 'contato', 'status', 'clear', 'ls'];
+
+    const scrollDown = () => { body.scrollTop = body.scrollHeight; };
+    const wait = (ms) => new Promise((r) => setTimeout(r, REDUCED ? 0 : ms));
+
+    function commandLine(cmd) {
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      const prompt = document.createElement('span');
+      prompt.className = 'terminal-prompt';
+      prompt.textContent = PROMPT;
+      const text = document.createElement('span');
+      text.className = 'terminal-cmd';
+      text.textContent = cmd;
+      line.append(prompt, text);
+      output.appendChild(line);
+      scrollDown();
+      return text;
+    }
+
+    async function print(lines, cls = '') {
+      const out = document.createElement('div');
+      out.className = 'terminal-out ' + cls;
+      output.appendChild(out);
+      for (const html of lines) {
+        out.insertAdjacentHTML('beforeend', html + '\n');
+        scrollDown();
+        await wait(35);
+      }
+    }
+
+    // digita um comando letra por letra, com o cursor de bloco
+    async function typeCommand(cmd) {
+      const text = commandLine('');
+      const caret = document.createElement('span');
+      caret.className = 'terminal-caret';
+      text.after(caret);
+      await wait(350);
+      for (const ch of cmd) {
+        text.textContent += ch;
+        await wait(40 + Math.random() * 60);
+      }
+      await wait(250);
+      caret.remove();
+    }
+
+    async function run(raw) {
+      const cmd = raw.trim().replace(/\s+/g, ' ');
+      const lower = cmd.toLowerCase();
+      if (!cmd) return;
+      const name = ALIASES[lower] || lower.split(' ')[0];
+      const arg = lower.split(' ').slice(1).join(' ');
+
+      if (name === 'clear') {
+        output.textContent = '';
+        return;
+      }
+      if (name === 'ls') {
+        await print(['projetos/  stack.json  contato.txt']);
+        return;
+      }
+      if (name === 'open') {
+        const i = PROJECTS.indexOf(arg.replace(/\/$/, ''));
+        if (i === -1) {
+          await print([arg ? `projeto não encontrado: ${esc(arg)}` : 'uso: open &lt;projeto&gt;', '<span class="d">Rode projetos para ver a lista.</span>'], 'err');
+          return;
+        }
+        await print([`abrindo <span class="k">${PROJECTS[i]}</span>…`]);
+        await wait(400);
+        document.querySelectorAll('.project-link')[i]?.click();
+        return;
+      }
+      if (lower === 'sudo contratar' || lower === 'sudo hire') {
+        await print(['[sudo] senha para recrutador: ********']);
+        await wait(700);
+        await print(['<span class="ok">Permissão concedida.</span> Abrindo seu e-mail…']);
+        await wait(900);
+        window.location.href = 'mailto:gugmoises@gmail.com?subject=' + encodeURIComponent('Vamos conversar sobre uma oportunidade');
+        return;
+      }
+      if (lower.startsWith('sudo')) {
+        await print(['Boa tentativa. Experimente <span class="k">sudo contratar</span>.'], 'd');
+        return;
+      }
+      if (OUTPUTS[name]) {
+        await print(OUTPUTS[name]);
+        return;
+      }
+      await print([`comando não encontrado: ${esc(cmd)}`, '<span class="d">Digite help para ver os comandos.</span>'], 'err');
+    }
+
+    // apresentação automática
+    async function intro() {
+      for (const [typed, key] of [['whoami', 'whoami'], ['cat stack.json', 'stack'], ['ls projetos/', 'projetos'], ['status', 'status']]) {
+        await typeCommand(typed);
+        await print(OUTPUTS[key]);
+        await wait(300);
+      }
+      await print(['<span class="d">Sua vez: digite help e aperte Enter.</span>']);
+      term.classList.add('is-ready');
+      scrollDown();
+    }
+
+    const history = [];
+    let cursor = 0;
+    let busy = false;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (busy) return;
+      const value = input.value;
+      input.value = '';
+      commandLine(value);
+      if (value.trim()) history.push(value.trim());
+      cursor = history.length;
+      busy = true;
+      await run(value);
+      busy = false;
+      scrollDown();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        cursor = Math.max(0, Math.min(history.length, cursor + (e.key === 'ArrowUp' ? -1 : 1)));
+        input.value = history[cursor] || '';
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const v = input.value.toLowerCase();
+        const pool = v.startsWith('open ') ? PROJECTS.map((p) => 'open ' + p) : COMMANDS;
+        const matches = pool.filter((c) => c.startsWith(v));
+        if (matches.length === 1) input.value = matches[0] + (v.startsWith('open ') ? '' : ' ');
+      }
+    });
+
+    // clicar em qualquer ponto do terminal foca o campo, sem mover a página
+    body.addEventListener('click', () => {
+      if (term.classList.contains('is-ready') && !window.getSelection().toString()) input.focus({ preventScroll: true });
+    });
+
+    onceVisible([term], () => {
+      term.classList.add('is-revealed');
+      setTimeout(intro, REDUCED ? 0 : 500);
+    }, { threshold: 0.35 });
+  }
+
+  // Cursor personalizado: ponto + anel com inércia, com estados sobre links, projetos e campos de texto.
+  // Botões principais ficam "magnéticos". Só em telas com mouse e sem "reduzir movimento".
+  function initCursor() {
+    if (REDUCED || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const root = document.documentElement;
+    const dot = document.createElement('div');
+    const ring = document.createElement('div');
+    const label = document.createElement('span');
+    dot.className = 'cursor-dot';
+    ring.className = 'cursor-ring';
+    label.className = 'cursor-label';
+    label.textContent = 'Ver';
+    dot.setAttribute('aria-hidden', 'true');
+    ring.setAttribute('aria-hidden', 'true');
+    ring.appendChild(label);
+    document.body.append(dot, ring);
+    root.classList.add('has-cursor');
+
+    let mx = -100, my = -100, rx = -100, ry = -100;
+    window.addEventListener('mousemove', (e) => {
+      mx = e.clientX;
+      my = e.clientY;
+      root.classList.add('cursor-visible');
+      dot.style.transform = `translate3d(${mx}px, ${my}px, 0)`;
+    }, { passive: true });
+    root.addEventListener('mouseleave', () => root.classList.remove('cursor-visible'));
+    window.addEventListener('mousedown', () => ring.classList.add('is-down'));
+    window.addEventListener('mouseup', () => ring.classList.remove('is-down'));
+
+    const follow = () => {
+      rx += (mx - rx) * 0.18;
+      ry += (my - ry) * 0.18;
+      ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+      requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
+
+    document.addEventListener('mouseover', (e) => {
+      const t = e.target;
+      const view = !!t.closest('.project-link');
+      ring.classList.toggle('is-view', view);
+      dot.classList.toggle('is-hidden', view); // o "Ver" fica legível sem o ponto por cima
+      ring.classList.toggle('is-text', !!t.closest('input, textarea'));
+      ring.classList.toggle('is-link', !view && !!t.closest('a, button, [role="button"], summary, label'));
+    });
+
+    document.querySelectorAll('.ds-hero-nav a, .contact-link, .footer-link, .button, .project-lightbox-close').forEach((el) => {
+      const strength = el.matches('.contact-link, .footer-link') ? 0.2 : 0.35;
+      el.classList.add('magnetic');
+      el.addEventListener('mousemove', (e) => {
+        const r = el.getBoundingClientRect();
+        const x = e.clientX - (r.left + r.width / 2);
+        const y = e.clientY - (r.top + r.height / 2);
+        el.style.translate = `${(x * strength).toFixed(1)}px ${(y * strength).toFixed(1)}px`;
+      });
+      el.addEventListener('mouseleave', () => { el.style.translate = ''; });
+    });
   }
 
   const revealObserver = new IntersectionObserver(
@@ -492,7 +854,10 @@
     initHeadingReveal();
     initWordScroll();
     initPortrait();
+    initTypeHeading();
     initCards();
+    initTerminal();
+    initCursor();
   }
 
   if (document.readyState === 'loading') {

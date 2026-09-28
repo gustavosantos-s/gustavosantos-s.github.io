@@ -467,10 +467,24 @@ html.lenis, html.lenis body{height:auto}
 .about-image-wrapper.is-revealed .about-image{clip-path:inset(0 0 0 0);transform:scale(1)}
 .about-image-placeholder{display:none}
 
-/* Cards de "Como eu trabalho": cascata + brilho que segue o mouse */
-.metrics-grid .metric-card{opacity:0;transform:translateY(32px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1),box-shadow .3s;transition-delay:calc(var(--i,0) * 90ms)}
-.metrics-grid .metric-card.is-revealed{opacity:1;transform:none}
-.metrics-grid .metric-card.is-revealed:hover{transform:translateY(-4px);transition-delay:0s}
+/* "Como eu trabalho" — "compilando": título digitado, borda desenhada, valor decodificado (initTypeHeading e initCards em main.js) */
+.metrics-grid .metric-card{transition:transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s,background-color .8s,border-color .8s}
+.metrics-grid .metric-card.is-pending{background-color:transparent;border-color:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+.metrics-grid .metric-card .card-outline{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.metrics-grid .metric-card .card-outline rect{fill:none;stroke:#1c1917;stroke-width:1;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.1s cubic-bezier(.65,0,.35,1),stroke-opacity .9s .9s}
+.metrics-grid .metric-card.is-compiling .card-outline rect{stroke-dashoffset:0;stroke-opacity:0}
+.metrics-grid .metric-value{position:relative}
+.metrics-grid .metric-card.is-pending .metric-value{opacity:0}
+.metrics-grid .metric-card .metric-title,.metrics-grid .metric-card .metric-desc{transition:opacity .8s cubic-bezier(.16,1,.3,1) .5s,transform .8s cubic-bezier(.16,1,.3,1) .5s}
+.metrics-grid .metric-card.is-pending .metric-title,.metrics-grid .metric-card.is-pending .metric-desc{opacity:0;transform:translateY(10px)}
+.metrics-grid .metric-card:hover{transform:translateY(-4px)}
+.metric-value .decode-size{visibility:hidden}
+.metric-value .decode-live{position:absolute;left:0;top:0;white-space:nowrap;color:#1c1917;-webkit-text-fill-color:#1c1917}
+.type-char{opacity:0}
+.type-char.is-typed{opacity:1}
+.type-char.is-caret{position:relative}
+.type-char.is-caret::after{content:"";position:absolute;right:-.1em;top:.14em;bottom:.1em;width:.07em;background:currentColor;animation:caret-blink 1s steps(1) infinite}
+@keyframes caret-blink{50%{opacity:0}}
 .metrics-grid .metric-card::before{
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .4s;
   background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(0,0,0,.06),transparent 45%);
@@ -484,8 +498,117 @@ html.lenis, html.lenis body{height:auto}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .split-word > span,.metrics-grid .metric-card{transform:none;opacity:1;transition:none}
+  .split-word > span{transform:none;opacity:1;transition:none}
   .scroll-word{opacity:1}
   .about-image-wrapper .about-image{clip-path:none;transform:none;transition:none}
   .about-image-wrapper .position-relative{transform:none}
 }
+
+/* ==========================================================================
+   Avatar 3D do Sobre: respiração, balanço e sombra no chão
+   ========================================================================== */
+.about-avatar .position-relative{max-width:420px;margin-inline:auto;padding-bottom:28px}
+/* círculo suave atrás do personagem, para dar profundidade */
+.about-avatar .position-relative::before{
+  content:"";position:absolute;left:50%;top:6%;width:92%;aspect-ratio:1;translate:-50% 0;border-radius:50%;
+  background:radial-gradient(circle at 50% 45%,#f1f1f1 0%,#f6f6f6 45%,rgba(255,255,255,0) 70%);
+}
+/* sombra no chão, respira junto com o personagem */
+.about-avatar .position-relative::after{
+  content:"";position:absolute;left:50%;bottom:14px;width:62%;height:26px;translate:-50% 0;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(0,0,0,.28),rgba(0,0,0,0));
+  filter:blur(3px);animation:avatar-shadow 5s ease-in-out infinite;
+}
+.about-avatar .about-image{
+  position:relative;z-index:1;display:block;width:100%;height:auto;
+  transform-origin:50% 100%;
+  animation:avatar-breathe 5s ease-in-out infinite,avatar-sway 9s ease-in-out infinite;
+}
+/* a revelação vem do chão: o clip-path da seção anterior já sobe de baixo para cima */
+@keyframes avatar-breathe{
+  0%,100%{scale:1 1}
+  50%{scale:1.006 1.014}
+}
+@keyframes avatar-sway{
+  0%,100%{rotate:-.6deg}
+  50%{rotate:.6deg}
+}
+@keyframes avatar-shadow{
+  0%,100%{opacity:.85;scale:1}
+  50%{opacity:.7;scale:.95}
+}
+@media (max-width:767px){
+  .about-avatar .position-relative{max-width:300px}
+}
+@media (prefers-reduced-motion:reduce){
+  .about-avatar .about-image,.about-avatar .position-relative::after{animation:none}
+}
+
+/* ==========================================================================
+   Terminal interativo (initTerminal em main.js)
+   ========================================================================== */
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.terminal-hint{margin:1rem 0 0;color:#57534e;font-size:1rem}
+.terminal-hint code,.terminal code{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.terminal-hint code{background:#f1f1f1;border-radius:4px;padding:.1em .4em;color:#111}
+.terminal{
+  --term-bg:#0b0b0b;--term-fg:#e9e9e7;--term-dim:#8a8a86;--term-accent:#7ee2a8;--term-key:#f2f2f0;
+  background:var(--term-bg);color:var(--term-fg);border-radius:14px;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.9);
+  font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:15px;line-height:1.6;
+  opacity:0;transform:translateY(40px) scale(.98);transition:opacity 1s cubic-bezier(.16,1,.3,1),transform 1s cubic-bezier(.16,1,.3,1);
+}
+.terminal.is-revealed{opacity:1;transform:none}
+.terminal-bar{display:flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.08);background:#141414}
+.terminal-dot{width:12px;height:12px;border-radius:50%;background:#3a3a3a}
+.terminal-dot:nth-child(1){background:#ff5f57}.terminal-dot:nth-child(2){background:#febc2e}.terminal-dot:nth-child(3){background:#28c840}
+.terminal-title{margin-left:auto;margin-right:auto;transform:translateX(-26px);color:var(--term-dim);font-size:13px}
+.lenis .terminal-body[data-lenis-prevent]{overscroll-behavior:auto}
+.terminal-body{height:460px;overflow-y:auto;padding:20px 22px 26px;cursor:text;scrollbar-width:thin;scrollbar-color:#333 transparent}
+.terminal-output{white-space:pre-wrap;word-break:break-word}
+.terminal-line{display:flex;gap:.6em;align-items:baseline;margin:0}
+.terminal-prompt{color:var(--term-accent);white-space:nowrap;flex:none}
+.terminal-cmd{color:var(--term-key)}
+.terminal-out{color:var(--term-fg);margin:0 0 .9em}
+.terminal-out .k{color:#9cdcfe}.terminal-out .s{color:#ce9178}.terminal-out .d{color:var(--term-dim)}
+.terminal-out a{color:var(--term-accent);text-decoration:underline;text-underline-offset:3px}
+.terminal-out .ok{color:var(--term-accent)}
+.terminal-out .err{color:#ff7b72}
+.terminal-caret{display:inline-block;width:.6em;height:1.15em;vertical-align:-.2em;background:var(--term-fg);animation:caret-blink 1s steps(1) infinite}
+.terminal-input-line{visibility:hidden}
+.terminal.is-ready .terminal-input-line{visibility:visible}
+.terminal-input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--term-key);font:inherit;caret-color:var(--term-accent);padding:0}
+@media (max-width:767px){
+  .terminal{font-size:13px}
+  .terminal-body{height:420px;padding:16px 16px 22px}
+  .terminal-title{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .terminal{opacity:1;transform:none;transition:none}
+  .terminal-caret{animation:none}
+}
+
+/* ==========================================================================
+   Cursor personalizado e botões magnéticos (initCursor em main.js)
+   Só em telas com mouse; no toque e com "reduzir movimento" fica o cursor normal.
+   ========================================================================== */
+.cursor-dot,.cursor-ring{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;border-radius:50%;mix-blend-mode:difference;opacity:0;transition:opacity .3s}
+.cursor-dot{width:6px;height:6px;margin:-3px 0 0 -3px;background:#fff}
+.cursor-ring{
+  width:36px;height:36px;margin:-18px 0 0 -18px;border:1.5px solid #fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .3s,scale .2s,width .35s cubic-bezier(.16,1,.3,1),height .35s cubic-bezier(.16,1,.3,1),margin .35s cubic-bezier(.16,1,.3,1),background-color .35s,border-radius .35s;
+}
+.cursor-label{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#000;opacity:0;transition:opacity .2s}
+html.has-cursor.cursor-visible .cursor-dot,html.has-cursor.cursor-visible .cursor-ring{opacity:1}
+html.has-cursor,html.has-cursor *{cursor:none!important}
+/* sobre links e botões */
+.cursor-ring.is-link{width:56px;height:56px;margin:-28px 0 0 -28px}
+/* sobre os cards de projeto: círculo cheio com "Ver" */
+.cursor-ring.is-view{width:96px;height:96px;margin:-48px 0 0 -48px;background:#fff}
+.cursor-ring.is-view .cursor-label{opacity:1}
+/* sobre campos de texto: vira uma barra */
+.cursor-ring.is-text{width:3px;height:26px;margin:-13px 0 0 -1.5px;border-radius:2px;background:#fff}
+.cursor-ring.is-down{scale:.8}
+.cursor-dot.is-hidden{opacity:0!important}
+.magnetic{transition:translate .45s cubic-bezier(.16,1,.3,1)}
