@@ -324,7 +324,20 @@
     const ALIASES = { 'cat stack.json': 'stack', 'ls projetos': 'projetos', 'ls projetos/': 'projetos', 'cat contato.txt': 'contato' };
     const COMMANDS = ['help', 'whoami', 'stack', 'projetos', 'open', 'contato', 'status', 'clear', 'ls'];
 
-    const scrollDown = () => { body.scrollTop = body.scrollHeight; };
+    const MAX_LINES = 120;
+    // Sem rolagem interna (ela brigava com a rolagem suave da página): o terminal cresce com o conteúdo.
+    // Mantém só as últimas linhas, para ele não crescer sem fim.
+    const trim = () => {
+      while (output.children.length > MAX_LINES) output.firstElementChild.remove();
+    };
+    // Depois de um comando do visitante, rola a página só o suficiente para o campo continuar visível
+    const keepInputVisible = () => {
+      const r = form.getBoundingClientRect();
+      const overflow = r.bottom - (window.innerHeight - 32);
+      if (overflow <= 0) return;
+      if (lenis) lenis.scrollTo(window.scrollY + overflow, { duration: 0.6 });
+      else window.scrollBy({ top: overflow, behavior: REDUCED ? 'auto' : 'smooth' });
+    };
     const wait = (ms) => new Promise((r) => setTimeout(r, REDUCED ? 0 : ms));
 
     function commandLine(cmd) {
@@ -338,7 +351,7 @@
       text.textContent = cmd;
       line.append(prompt, text);
       output.appendChild(line);
-      scrollDown();
+      trim();
       return text;
     }
 
@@ -348,7 +361,6 @@
       output.appendChild(out);
       for (const html of lines) {
         out.insertAdjacentHTML('beforeend', html + '\n');
-        scrollDown();
         await wait(35);
       }
     }
@@ -422,7 +434,6 @@
       }
       await print(['<span class="d">Sua vez: digite help e aperte Enter.</span>']);
       term.classList.add('is-ready');
-      scrollDown();
     }
 
     const history = [];
@@ -439,7 +450,8 @@
       busy = true;
       await run(value);
       busy = false;
-      scrollDown();
+      trim();
+      keepInputVisible();
     });
 
     input.addEventListener('keydown', (e) => {
